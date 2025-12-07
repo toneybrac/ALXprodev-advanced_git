@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# post-merge hook: Logs merge events into main/master branch
+# Usage: Place in .git/hooks/post-merge and make executable
+
+echo "🔄 Running post-merge hook..."
+
+# Check if we just merged into main/master branch
+CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+MERGE_HEAD=$(git rev-parse MERGE_HEAD 2>/dev/null)
+
+if [ -n "$MERGE_HEAD" ]; then
+    # This was a merge operation
+    MERGE_FROM=$(git log -1 --pretty=format:"%s" "$MERGE_HEAD")
+    MERGE_INTO=$CURRENT_BRANCH
+    TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Create logs directory if it doesn't exist
+    LOG_DIR=".git/logs"
+    mkdir -p "$LOG_DIR"
+    
+    # Log file
+    LOG_FILE="$LOG_DIR/merge-history.log"
+    
+    # Log the merge
+    echo "[$TIMESTAMP] Merged into: $MERGE_INTO | From: $MERGE_FROM" >> "$LOG_FILE"
+    
+    # Also output to console
+    echo "📝 Merge logged:"
+    echo "   Timestamp: $TIMESTAMP"
+    echo "   Into branch: $MERGE_INTO"
+    echo "   From: $MERGE_FROM"
+    echo "   Log saved to: $LOG_FILE"
+    
+    # Additional: Check if merged into main/master
+    if [[ "$MERGE_INTO" == "main" || "$MERGE_INTO" == "master" ]]; then
+        echo "⚠️ IMPORTANT: Merge into production branch ($MERGE_INTO) detected!"
+        
+        # Create production merge log
+        PROD_LOG="$LOG_DIR/production-merges.log"
+        echo "[$TIMESTAMP] PRODUCTION MERGE: $MERGE_INTO <- $MERGE_FROM" >> "$PROD_LOG"
+        
+        echo "   Production merge logged to: $PROD_LOG"
+        
+        # Optional: Send notification (uncomment if you want)
+        # echo "Production merge detected at $TIMESTAMP" | mail -s "Git Merge Alert" team@example.com
+    fi
+else
+    echo "ℹ️ Not a merge operation, skipping log."
+fi
+
+echo "✅ Post-merge hook completed"
+exit 0
